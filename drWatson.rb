@@ -1,15 +1,9 @@
 require './classes'
-
-#hard coded all cards for now
-Weapons.new("candlestick")
-Suspects.new("white"); Suspects.new("peacock")
-Rooms.new("study"); Rooms.new("library")
-#not sure if all_cards needed but why not
-$all_cards = [$all_suspects, $all_weapons, $all_rooms].reduce &:merge
-puts $all_cards
+require 'set'
 
 module ParserHelper
 	#going to handle errors from the input
+	#md_array=[[hash to check in, string object to put in],[],[]]
 	def error_handler(md_array=nil, card=nil)
 		err = true
 		while err==true
@@ -17,12 +11,12 @@ module ParserHelper
 		end
 		return err
 	end
-	def finder
-		finder = lambda {|md_array, card|
+	def findnset
+		findnset = lambda {|md_array, card|
 			found = false
-			md_array.each{|part|
+			md_array.each{|part|	
 				if part[0].has_key?(card.to_sym)
-					part[1].replace card
+					part[1].replace card 
 					found = true
 					return false
 				end
@@ -52,49 +46,82 @@ def parse_suggest(suggest)
 	}
 
 	new_suggest = Suggestions.new()
-	error_handler([[$all_players, new_suggest.suggest_by]], suggest[0], &ParserHelper.finder)
+	error_handler([[$all_players, new_suggest.suggest_by]], suggest[0], &ParserHelper.findnset)
 
 	for i in 1..3
-		error_handler([[$all_weapons, new_suggest.weapon],[$all_rooms, new_suggest.room],[$all_suspects, new_suggest.suspect]], suggest[i], &ParserHelper.finder)
+		error_handler([[$all_weapons, new_suggest.weapon],[$all_rooms, new_suggest.room],[$all_suspects, new_suggest.suspect]], suggest[i], &ParserHelper.findnset)
 	end
 	
-	error_handler([[$all_players, new_suggest.disproved_by]], suggest[4], &ParserHelper.finder) if len>=5
+	error_handler([[$all_players, new_suggest.disproved_by]], suggest[4], &ParserHelper.findnset) if len>=5
 
-	error_handler([[$all_cards, new_suggest.card_shown]], suggest[5], &ParserHelper.finder) if len==6
+	error_handler([[$all_cards, new_suggest.card_shown]], suggest[5], &ParserHelper.findnset) if len==6
 
 	puts $all_suggestions
 end
 
 module AlgoHelper
-	def croc
-		croc = lambda{|symbol, obj|
-			obj.owned_by ==0
+	def get_unowned_cards
+		get_unowned_cards = lambda{|symbol, obj|
+			obj.owned_by == ""
+		}
+	end
+
+	def add_if_unowned(cards,hash,add_to)
+		cards.each{|card|
+			add_to.add(card) if hash.has_key?(card.to_sym)
+		}
+	end
+	def delete_possible_if_owned(card)
+		$possible_cards.each{|key, set|
+			set.delete(card)
 		}
 	end
 end
-#algorithm 1: simplest one. in which you find out all the cards people have and the cards which arent there are in the envelope
-def algo1
+
+#
+def update_lists
 	include AlgoHelper
-	last_suggest = $all_suggestions[$all_suggestions.length]
-	card_shown = last_suggest.card_shown
+	ls = $all_suggestions[$all_suggestions.length]
+	
+	#updates owned cards
+	card_shown = ls.card_shown
 	if card_shown !=""
-		disproved_by = last_suggest.disproved_by
+		disproved_by = ls.disproved_by
 		$all_cards[card_shown.to_sym].owned_by = disproved_by
+		delete_possible_if_owned(card_shown)
 	end
-	checker = $all_cards.select(&AlgoHelper.croc)
-	return (checker.length ==3) ? checker : 0 
+
+	#updates possible cards
+	disproved = ls.disproved_by
+	if disproved !=""
+		unowned_cards = $all_cards.select(&AlgoHelper.get_unowned_cards)
+		add_if_unowned([ls.weapon,ls.room,ls.suspect], unowned_cards, $possible_cards[disproved.to_sym])		
+	end
+	puts $possible_cards
 end
 
-Players.new("sg", 4, 4)
-Players.new("meeks", 5, 2)
-Players.new("aly", 5, 1)
-Players.new("ali", 4, 3)
+def abc
+	#algorithm 1: simplest one. in which you find out all the cards people have and the cards which arent there are in the envelope	
+	unowned_cards = $all_cards.select(&AlgoHelper.get_unowned_cards)
+	return unowned_cards if unowned_cards.length ==3 
 
+	#algorithm 2: guess which cards people have. so this makes use of disproved_by and creates a list of possible cards players have. 
+	#and works with that possible list
+	
+
+	return 0
+end
+
+$possible_cards = Hash.new
+
+
+require './setup'
 #main body:
 found=0
 until found!=0
 	parse_suggest(gets.chomp)
-	break if (found = algo1) !=0
+	update_lists
+	break if (found = abc) !=0
 end
 
 found.each{|key|

@@ -4,7 +4,7 @@ class Weapons
 	attr_reader :name
 	attr_accessor :owned_by
 	
-	def initialize(name, owned_by=0)
+	def initialize(name, owned_by="")
 		@name = name
 		@owned_by = owned_by
 		@@count +=1
@@ -22,7 +22,7 @@ class Suspects
 	attr_reader :name
 	attr_accessor :owned_by
 	
-	def initialize(name, owned_by=0)
+	def initialize(name, owned_by="")
 		@name = name
 		@owned_by = owned_by
 		@@count +=1
@@ -40,7 +40,7 @@ class Rooms
 	attr_reader :name
 	attr_accessor :owned_by
 	
-	def initialize(name, owned_by=0) #name is basically the identifier
+	def initialize(name, owned_by="") #name is basically the identifier
 		@name = name
 		@owned_by = owned_by
 		@@count+=1
