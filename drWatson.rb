@@ -1,5 +1,5 @@
-require './classes'
 require 'set'
+require './classes'
 
 module ParserHelper
 	#going to handle errors from the input
@@ -60,21 +60,42 @@ def parse_suggest(suggest)
 end
 
 module AlgoHelper
-	def get_unowned_cards
-		get_unowned_cards = lambda{|symbol, obj|
+	def get_unownd_cards
+		get_unownd_cards = lambda{|symbol, obj|
 			obj.owned_by == ""
 		}
 	end
-
-	def add_if_unowned(cards,hash,add_to)
+	def get_ownd_cards
+		get_ownd_cards = lambda{|symbol,obj|
+			obj.owned_by!=""
+		}
+	end
+	def add_if_unownd(cards,hash,add_to)
 		cards.each{|card|
 			add_to.add(card) if hash.has_key?(card.to_sym)
 		}
 	end
-	def delete_possible_if_owned(card)
-		$possible_cards.each{|key, set|
-			set.delete(card)
+	def del_poss_if_ownd
+
+		owned_cards = $all_cards.select(&get_ownd_cards)
+		owned_cards.each{|sym, card_obj|
+			$possible_cards.each{|key, set|
+				set.delete(sym.to_s)
+			}
 		}
+		
+	end
+	def get_player_by_order(order)
+		p = $all_players.select{|key,player|
+			player.order == order
+		}
+		return p.keys[0]
+	end
+	def del_poss_if_im(im_array, player) #player given in sym
+		im_array.each{|card|
+			$possible_cards[player].delete(card)
+		}
+		
 	end
 end
 
@@ -82,27 +103,62 @@ end
 def update_lists
 	include AlgoHelper
 	ls = $all_suggestions[$all_suggestions.length]
-	
+	unowned_cards = $all_cards.select(&get_unownd_cards)
+	weapon = ls.weapon
+	suspect = ls.suspect
+	room = ls.room
+	disproved = ls.disproved_by
+
 	#updates owned cards
 	card_shown = ls.card_shown
 	if card_shown !=""
 		disproved_by = ls.disproved_by
 		$all_cards[card_shown.to_sym].owned_by = disproved_by
-		delete_possible_if_owned(card_shown)
+		
 	end
 
-	#updates possible cards
-	disproved = ls.disproved_by
-	if disproved !=""
-		unowned_cards = $all_cards.select(&AlgoHelper.get_unowned_cards)
-		add_if_unowned([ls.weapon,ls.room,ls.suspect], unowned_cards, $possible_cards[disproved.to_sym])		
+	#updates owned cards based on all the previous suggestions: 
+	#if 2 cards owned by someone other than the person disproving, then 3rd card owned by disproving dude
+	$all_suggestions.each{|key, sug|
+		dis_by = sug.disproved_by
+		count = 0
+		poss_card = ""
+		[sug.weapon,sug.room,sug.suspect].each{|card|
+			owned_by = $all_cards[card.to_sym].owned_by
+			if owned_by != dis_by
+				owned_by !="" ? count+=1 : poss_card=card
+			end
+		}
+		if count == 2 && poss_card !=""
+			puts poss_card
+			$all_cards[poss_card.to_sym].owned_by = dis_by
+		end
+	}
+
+	#updates impossible list
+	pos_asked = $all_players[ls.suggest_by.to_sym].order
+	pos_ans = disproved == "" ? pos_asked : $all_players[disproved.to_sym].order
+	pos_ans+=4 if pos_ans <= pos_asked
+	for i in ((pos_asked+1)...pos_ans)
+		order = (i-1)%4 + 1
+		player_sym = get_player_by_order(order)
+		add_if_unownd([weapon,room,suspect], unowned_cards, $impossible_cards[player_sym])
+		del_poss_if_im([weapon,room,suspect],player_sym)
 	end
+
+	#updates possible cards	
+	add_if_unownd([weapon,room,suspect], unowned_cards, $possible_cards[disproved.to_sym]) if disproved !=""
+	del_poss_if_ownd
+
+	puts $all_cards
 	puts $possible_cards
+	puts $impossible_cards
+	
 end
 
 def abc
 	#algorithm 1: simplest one. in which you find out all the cards people have and the cards which arent there are in the envelope	
-	unowned_cards = $all_cards.select(&AlgoHelper.get_unowned_cards)
+	unowned_cards = $all_cards.select(&AlgoHelper.get_unownd_cards)
 	return unowned_cards if unowned_cards.length ==3 
 
 	#algorithm 2: guess which cards people have. so this makes use of disproved_by and creates a list of possible cards players have. 
@@ -113,10 +169,11 @@ def abc
 end
 
 $possible_cards = Hash.new
+$impossible_cards = Hash.new
 
-
-require './setup'
 #main body:
+require './setup'
+
 found=0
 until found!=0
 	parse_suggest(gets.chomp)

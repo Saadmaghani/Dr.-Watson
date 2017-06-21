@@ -15,6 +15,7 @@ while count <18
 	count += cards
 	Players.new(name, cards, info[1].to_i)
 	$possible_cards[name] = Set.new
+	$impossible_cards[name] = Set.new
 end
 include ParserHelper
 
