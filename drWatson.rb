@@ -167,11 +167,10 @@ def solve_cluedo
 
 	solution.delete_if{|acard|
 		result = for i in (1...keys.length)
-			found = false
-			$impossible_cards[keys[i]].to_a.each{|bcard|
-				found = true if acard == bcard
+			found = $impossible_cards[keys[i]].to_a.each{|bcard|
+				break(true) if acard == bcard
 			}			
-			break(true) if !found
+			break(true) if found !=true
 		end
 		(result==true) ? true : false
 	}
