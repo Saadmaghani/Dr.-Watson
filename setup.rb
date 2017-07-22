@@ -32,5 +32,9 @@ for i in (0...cards.length)
 	$all_cards[card.to_sym].owned_by = user
 end
 
+include AlgoHelper
+unowned_cards = $all_cards.select(&AlgoHelper.get_unownd_cards).keys.map &:to_s
+$impossible_cards[user.to_sym].merge(unowned_cards)
+
 puts $all_cards
 puts "Enter your suggests:"

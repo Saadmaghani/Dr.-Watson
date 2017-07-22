@@ -82,8 +82,7 @@ module AlgoHelper
 			$possible_cards.each{|key, set|
 				set.delete(sym.to_s)
 			}
-		}
-		
+		}	
 	end
 	def get_player_by_order(order)
 		p = $all_players.select{|key,player|
@@ -95,7 +94,6 @@ module AlgoHelper
 		im_array.each{|card|
 			$possible_cards[player].delete(card)
 		}
-		
 	end
 end
 
@@ -104,6 +102,7 @@ def update_lists
 	include AlgoHelper
 	ls = $all_suggestions[$all_suggestions.length]
 	unowned_cards = $all_cards.select(&get_unownd_cards)
+
 	weapon = ls.weapon
 	suspect = ls.suspect
 	room = ls.room
@@ -156,15 +155,29 @@ def update_lists
 	
 end
 
-def abc
+def solve_cluedo
 	#algorithm 1: simplest one. in which you find out all the cards people have and the cards which arent there are in the envelope	
 	unowned_cards = $all_cards.select(&AlgoHelper.get_unownd_cards)
-	return unowned_cards if unowned_cards.length ==3 
+	return unowned_cards if unowned_cards.length == 3 
 
-	#algorithm 2: guess which cards people have. so this makes use of disproved_by and creates a list of possible cards players have. 
-	#and works with that possible list
+	#algorithm 2: gets the cards which are impossible to all players
+	solution = Array.new
+	keys = $impossible_cards.keys
+	solution = $impossible_cards[keys[0]].to_a
+
+	solution.delete_if{|acard|
+		result = for i in (1...keys.length)
+			val = $impossible_cards[keys[i]].to_a
+			found = false
+			val.each{|bcard|
+				found = true if acard == bcard
+			}			
+			break(true) if !found
+		end
+		(result==true) ? true : false
+	}
+	return solution if solution.length == 3
 	
-
 	return 0
 end
 
@@ -178,9 +191,9 @@ found=0
 until found!=0
 	parse_suggest(gets.chomp)
 	update_lists
-	break if (found = abc) !=0
+	break if (found = solve_cluedo) !=0
 end
-
-found.each{|key|
+puts "!!!!!!!!! SOLUTION FOUND !!!!!!!!!!!!!"
+found.each{|key, val|
 	puts key.to_s
 }
